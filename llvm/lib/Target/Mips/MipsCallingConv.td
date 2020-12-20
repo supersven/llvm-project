@@ -294,6 +294,26 @@ def CC_Mips_FastCC : CallingConv<[
 ]>;
 
 //===----------------------------------------------------------------------===//
+// GHC Calling Convention
+//===----------------------------------------------------------------------===//
+
+def CC_MipsN64_GHC : CallingConv<[
+  CCIfType<[f64], CCAssignToReg<[D28_64, D30_64]>>,
+  CCIfType<[f32], CCAssignToReg<[F20, F22, F24, F26]>>,
+
+  // All integers (except soft-float integers) are promoted to 64-bit.
+  CCIfType<[i8, i16, i32], CCIfOrigArgWasNotFloat<CCPromoteToType<i64>>>,
+
+  // Pass in STG registers: Base, Sp, Hp, R1, R2, R3, R4, SpLim
+  CCIfType<[i64], CCAssignToReg<[S0_64, S1_64, S2_64, S3_64, S4_64, S5_64, S6_64, S7_64]>>,
+
+  // TODO: Is this needed?
+  // All stack parameter slots become 64-bit doublewords and are 8-byte aligned.
+  CCIfType<[f32], CCAssignToStack<4, 8>>,
+  CCIfType<[i64, f64], CCAssignToStack<8, 8>>
+]>;
+
+//===----------------------------------------------------------------------===//
 // Mips Calling Convention Dispatch
 //===----------------------------------------------------------------------===//
 
@@ -316,6 +336,8 @@ def CC_Mips16RetHelper : CallingConv<[
 ]>;
 
 def CC_Mips_FixedArg : CallingConv<[
+  CCIfCC<"CallingConv::GHC", CCDelegateTo<CC_MipsN64_GHC>>,
+
   // Mips16 needs special handling on some functions.
   CCIf<"State.getCallingConv() != CallingConv::Fast",
       CCIfSpecialCallingConv<"Mips16RetHelperConv",
